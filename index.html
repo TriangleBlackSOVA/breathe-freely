@@ -1,4 +1,4 @@
-
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -200,10 +200,21 @@
         ];
 
         // --- Вспомогательные функции ---
+        
         // Функция для получения текущего местного времени в формате YYYY-MM-DDTHH:mm
         const getLocalDatetime = () => {
             const tzoffset = (new Date()).getTimezoneOffset() * 60000; 
             return new Date(Date.now() - tzoffset).toISOString().slice(0, 16);
+        };
+
+        // Кроссбраузерный парсер для datetime-local (чтобы браузер не путал часовые пояса)
+        const parseLocalDatetime = (dtString) => {
+            if (!dtString) return new Date();
+            const [datePart, timePart] = dtString.split('T');
+            if (!datePart || !timePart) return new Date();
+            const [year, month, day] = datePart.split('-');
+            const [hour, minute] = timePart.split(':');
+            return new Date(year, month - 1, day, hour, minute);
         };
 
         const calculateTimeLeft = (startDate) => {
@@ -221,8 +232,8 @@
         const formatNumber = (num) => num.toString().padStart(2, '0');
         const formatDurationFriendly = (seconds) => {
           if (seconds < 3600) return `${Math.floor(seconds / 60)} мин.`;
-          if (seconds < 86400) return `${Math.floor(seconds / 3600)} ч.`;
-          return `${Math.floor(seconds / 86400)} дн.`;
+          if (seconds < 86400) return `${Math.floor(seconds / 3600)} ч. ${Math.floor((seconds % 3600) / 60)} м.`;
+          return `${Math.floor(seconds / 86400)} дн. ${Math.floor((seconds % 86400) / 3600)} ч.`;
         };
 
         // --- Компоненты UI ---
@@ -337,11 +348,11 @@
 
                 onComplete({
                     types: selectedTypes,
-                    quitDate: new Date(quitDate).toISOString(),
+                    quitDate: parseLocalDatetime(quitDate).toISOString(),
                     alcoholEnabled: enableAlcohol,
-                    alcoholQuitDate: enableAlcohol ? new Date(alcoholQuitDate).toISOString() : null,
+                    alcoholQuitDate: enableAlcohol ? parseLocalDatetime(alcoholQuitDate).toISOString() : null,
                     drugsEnabled: enableDrugs,
-                    drugsQuitDate: enableDrugs ? new Date(drugsQuitDate).toISOString() : null,
+                    drugsQuitDate: enableDrugs ? parseLocalDatetime(drugsQuitDate).toISOString() : null,
                     isDarkMode: true,
                     widgetSize: 'large',
                     timerThemes: { smoking: 's1', alcohol: 'a1', drugs: 'd1' },
@@ -894,7 +905,7 @@
 
         // --- Главный компонент App ---
         const App = () => {
-          const SAVED_DATA_KEY = 'breathe_freely_data_v3';
+          const SAVED_DATA_KEY = 'breathe_freely_data_v4'; // <-- Изменено на v4, чтобы сбросить старые багованные 3 часа
           const [userSettings, setUserSettings] = useState(null);
           const [activeTab, setActiveTab] = useState('dashboard');
           const [notification, setNotification] = useState(null);
