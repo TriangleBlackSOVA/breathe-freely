@@ -15,11 +15,6 @@
     <!-- Babel (Переводчик кода) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Firebase SDK (Облачное сохранение) -->
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
-
     <style>
         /* Стили для скроллбара в стиле iOS */
         .custom-scrollbar::-webkit-scrollbar { height: 3px; }
@@ -34,13 +29,6 @@
             color: #fff;
         }
         .color-scheme-dark { color-scheme: dark; }
-
-        /* Анимация пульса для экрана загрузки */
-        @keyframes subtlePulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.8; transform: scale(0.95); }
-        }
-        .animate-subtle-pulse { animation: subtlePulse 2s ease-in-out infinite; }
     </style>
 </head>
 <body>
@@ -48,20 +36,8 @@
 
     <script type="text/babel">
         const { useState, useEffect } = React;
-        
-        // --- Инициализация Облачного Хранилища (Firebase) ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'breathe-freely-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        // --- Встроенные SVG Иконки (Чтобы не было ошибок извне) ---
+        // --- Встроенные SVG Иконки ---
         const iconPaths = {
             Activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
             Heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
@@ -279,7 +255,7 @@
                   key={t.id} 
                   onClick={() => onSelect(t.id)}
                   title={t.name}
-                  className={`relative flex-shrink-0 w-12 h-12 rounded-full ${t.bgClass} shadow-md transition-all duration-300 active:scale-95 ${selectedId === t.id ? 'ring-4 ring-blue-500 ring-offset-4 bg-black scale-110' : 'opacity-70 hover:opacity-100'}`}
+                  className={`relative flex-shrink-0 w-12 h-12 rounded-full ${t.bgClass} shadow-md transition-all duration-300 active:scale-95 ${selectedId === t.id ? 'ring-4 ring-blue-500 ring-offset-4 ring-offset-[#1C1C1E] scale-110' : 'opacity-70 hover:opacity-100'}`}
                 >
                   {selectedId === t.id && <CheckCircle2 size={20} className="absolute inset-0 m-auto text-white drop-shadow-md" />}
                 </button>
@@ -916,56 +892,26 @@
 
         // --- Главный компонент App ---
         const App = () => {
-          const [user, setUser] = useState(null);
+          const SAVED_DATA_KEY = 'breathe_freely_data_v3';
           const [userSettings, setUserSettings] = useState(null);
-          const [isInitializing, setIsInitializing] = useState(true);
           const [activeTab, setActiveTab] = useState('dashboard');
           const [notification, setNotification] = useState(null);
           const [dialog, setDialog] = useState(null);
 
-          // 1. Инициализация Firebase Авторизации
+          // Инициализация из LocalStorage
           useEffect(() => {
-            const initAuth = async () => {
-              try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                  await auth.signInWithCustomToken(__initial_auth_token);
-                } else {
-                  await auth.signInAnonymously();
-                }
-              } catch (e) {
-                console.error("Ошибка авторизации:", e);
-                setIsInitializing(false);
+            try {
+              const saved = localStorage.getItem(SAVED_DATA_KEY);
+              if (saved) {
+                setUserSettings(JSON.parse(saved));
+              } else {
+                setUserSettings('onboarding');
               }
-            };
-            initAuth();
-            const unsubscribe = auth.onAuthStateChanged((u) => {
-                setUser(u);
-            });
-            return () => unsubscribe();
+            } catch (e) {
+              console.error('Ошибка загрузки данных', e);
+              setUserSettings('onboarding');
+            }
           }, []);
-
-          // 2. Загрузка данных из облака
-          useEffect(() => {
-            if (!user) return;
-            const docRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data');
-            
-            const unsubscribe = docRef.onSnapshot(
-                (doc) => {
-                    if (doc.exists) {
-                        setUserSettings(doc.data());
-                    } else {
-                        setUserSettings('onboarding');
-                    }
-                    setIsInitializing(false);
-                },
-                (error) => {
-                    console.error("Ошибка загрузки из облака:", error);
-                    setUserSettings('onboarding');
-                    setIsInitializing(false);
-                }
-            );
-            return () => unsubscribe();
-          }, [user]);
 
           // Уведомления
           useEffect(() => {
@@ -977,37 +923,22 @@
             return () => clearInterval(interval);
           }, [userSettings]);
 
-          // 3. Сохранение данных в облако
-          const handleUpdateSettings = async (newSettings, redirectTab) => {
-            if (!user) return;
-            
+          const handleUpdateSettings = (newSettings, redirectTab) => {
             if (newSettings === null) {
+                localStorage.removeItem(SAVED_DATA_KEY);
                 setUserSettings('onboarding');
-                try {
-                    await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data').delete();
-                } catch(e) { console.error(e) }
             } else {
+                localStorage.setItem(SAVED_DATA_KEY, JSON.stringify(newSettings));
                 setUserSettings(newSettings);
-                try {
-                    await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data').set(newSettings, { merge: true });
-                } catch(e) { console.error(e) }
             }
-            
             setDialog(null);
             if (redirectTab) setActiveTab(redirectTab);
           };
 
           const showSystemAlert = (title, message) => setDialog({ type: 'alert', title, message });
 
-          if (isInitializing) {
-             return (
-                 <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white">
-                    <Shield className="w-16 h-16 text-blue-500 mb-6 animate-subtle-pulse" />
-                    <h2 className="text-xl font-bold animate-pulse text-white/50">Загрузка данных...</h2>
-                 </div>
-             );
-          }
-
+          if (!userSettings) return <div className="min-h-screen bg-black flex items-center justify-center"></div>;
+          
           if (userSettings === 'onboarding') {
             return (
               <div className="w-full bg-black min-h-screen font-sans text-white">
