@@ -5,38 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Дыши Свободно</title>
     
-    <!-- Tailwind CSS (Стили) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- React & ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel (Переводчик кода для браузера) -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
+
     <style>
+        .custom-scrollbar::-webkit-scrollbar { height: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.3); border-radius: 10px; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        body { 
-            -webkit-tap-highlight-color: transparent; 
-            background-color: #000; /* Темный фон по умолчанию */
-        }
+        body { -webkit-tap-highlight-color: transparent; background-color: #000; color: white; }
         .color-scheme-dark { color-scheme: dark; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <!-- ВЕСЬ КОД ПРИЛОЖЕНИЯ НИЖЕ -->
     <script type="text/babel">
-        const { useState, useEffect } = React;
-        
-        // --- Встроенные иконки (без зависимостей) ---
+        const { useState, useEffect, useCallback, useMemo } = React;
+
+        // --- Инициализация Firebase ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'breathe-freely-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- Встроенные иконки ---
         const iconPaths = {
             Activity: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
             Heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>',
-            SettingsIcon: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+            SettingsIcon: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1-1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
             Bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
             Wind: '<path d="M17.7 7.7a2.5 2.5 0 1 1 1.8 4.3H2"/><path d="M9.6 4.6A2 2 0 1 1 11 8H2"/><path d="M12.6 19.4A2 2 0 1 0 14 16H2"/>',
             Coffee: '<path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4Z"/><line x1="6" y1="2" x2="6" y2="4"/><line x1="10" y1="2" x2="10" y2="4"/><line x1="14" y1="2" x2="14" y2="4"/>',
@@ -81,18 +97,9 @@
             ])
         );
 
-        const { 
-          Activity, Heart, SettingsIcon, Bell, Wind, 
-          Coffee, AlertCircle, CheckCircle2, Shield, X, Info,
-          Flame, Droplets, Moon, Sun, Play, Square, Phone, Brain,
-          Music, Trophy, Star, Medal, Crown, Zap, EyeOff,
-          TrendingUp, Wallet, Clock, LifeBuoy, RotateCcw, CalendarDays, BarChart3,
-          ListRestart, Maximize2, Minimize2 
-        } = Icons;
+        const { Activity, Heart, SettingsIcon, Bell, Wind, Coffee, AlertCircle, CheckCircle2, Shield, X, Info, Flame, Droplets, Moon, Sun, Play, Square, Phone, Brain, Music, Trophy, Star, Medal, Crown, Zap, EyeOff, TrendingUp, Wallet, Clock, LifeBuoy, RotateCcw, CalendarDays, BarChart3, ListRestart, Maximize2, Minimize2 } = Icons;
 
-        const RunIcon = Activity; // Псевдоним
-
-        // --- Данные и константы ---
+        // --- Константы данных ---
         const SMOKING_TYPES = [
           { id: 'cigarettes', label: 'Обычные сигареты', icon: <Flame size={20} />, hasUnits: true, unitName: 'сигарет' },
           { id: 'vape', label: 'Электронные сигареты / Вейпы', icon: <Wind size={20} />, hasUnits: false },
@@ -142,173 +149,47 @@
           ]
         };
 
-        const PRACTICES = [
-          { title: 'Дыхание 4-7-8', description: 'Вдох через нос (4 сек), задержка (7 сек), выдох через рот (8 сек).', type: 'breathing', icon: <Wind /> },
-          { title: 'Квадратное дыхание', description: 'Вдох, задержка, выдох, задержка — всё по 4 секунды. Фокус на ритме.', type: 'breathing', icon: <Wind /> },
-          { title: 'Глубокий живот', description: 'Положите руку на живот. Дышите так, чтобы надувалась рука, а не грудь.', type: 'breathing', icon: <Wind /> },
-          { title: 'Дыхание через трубочку', description: 'Вдох носом, медленный выдох через плотно сжатые губы.', type: 'breathing', icon: <Wind /> },
-          { title: 'Дыхание 5-5-5', description: 'Вдох 5 секунд, задержка 5 секунд, выдох 5 секунд. Выравнивает пульс.', type: 'breathing', icon: <Wind /> },
-          { title: 'Дыхание льва', description: 'Мощный выдох через рот с высунутым языком и звуком "Хааа". Снимает спазм.', type: 'breathing', icon: <Wind /> },
-          { title: 'Поочередное дыхание', description: 'Зажмите правую ноздрю, вдохните левой. Зажмите левую, выдохните правой.', type: 'breathing', icon: <Wind /> },
-          { title: 'Резкие выдохи', description: 'Короткие, резкие выдохи через нос, втягивая живот. Бодрит и отвлекает.', type: 'breathing', icon: <Wind /> },
-          { title: 'Дыхание "Океан"', description: 'Слегка сожмите горло при дыхании носом, создавая шипящий звук волн.', type: 'breathing', icon: <Wind /> },
-          { title: 'Двойной вдох', description: 'Два коротких вдоха носом подряд, затем один длинный выдох ртом.', type: 'breathing', icon: <Wind /> },
-          { title: 'Математика: 100 минус 7', description: 'Считайте в уме в обратном порядке: 100, 93, 86, 79... Это перегружает память.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Правило 15 минут', description: 'Скажите себе: "Покурю через 15 минут". Займитесь делом. Тяга пройдет.', type: 'behavioral', icon: <Activity /> },
-          { title: 'Города мира', description: 'Назовите в уме 10 городов, начинающихся на букву "М".', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Круглые предметы', description: 'Найдите глазами и назовите 5 круглых предметов в комнате.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Цвета радуги', description: 'Найдите предметы каждого цвета радуги вокруг себя.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Алфавит', description: 'Придумайте слово на каждую букву алфавита от А до Я.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Иностранные слова', description: 'Вспомните 10 слов на любом иностранном языке.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Степень двойки', description: 'Считайте: 2, 4, 8, 16, 32, 64, 128... Как далеко зайдете?', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Детализация', description: 'Выберите предмет и опишите его про себя так детально, как сможете.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Воспоминание', description: 'Вспомните свой самый счастливый день отпуска в мельчайших деталях.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Таблица умножения', description: 'Вспомните таблицу умножения на 7, затем на 8, затем на 9.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Чтение задом наперед', description: 'Прочитайте любой текст или вывеску, которую видите, задом наперед.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Животные на "К"', description: 'Вспомните 10 животных на букву "К".', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Серфинг желаний', description: 'Представьте тягу как волну. Она нарастает, но неизбежно спадает.', type: 'mindfulness', icon: <Activity /> },
-          { title: 'Техника 5-4-3-2-1', description: '5 вещей вижу, 4 трогаю, 3 слышу, 2 нюхаю, 1 пробую на вкус.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Шахматный конь', description: 'Визуализируйте доску и мысленно ходите конем по клеткам.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Имена', description: 'Вспомните 10 мужских и 10 женских имен на букву "А".', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Фокус на звуках', description: 'Закройте глаза и найдите 3 самых тихих звука в помещении.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Рецепт', description: 'Мысленно пошагово проговорите рецепт вашего любимого блюда.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'План на завтра', description: 'Составьте в уме подробное расписание на завтрашний день.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Простые числа', description: 'Считайте простые числа: 2, 3, 5, 7, 11, 13, 17...', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Фильмы', description: 'Вспомните названия 10 фильмов, которые вы смотрели в последний год.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Сортировка', description: 'Представьте свою полку с книгами и мысленно отсортируйте их.', type: 'mindfulness', icon: <Brain /> },
-          { title: 'Позитив', description: 'Назовите 3 вещи, за которые вы благодарны прямо сейчас.', type: 'mindfulness', icon: <Heart /> },
-          { title: 'Мантра', description: 'Повторяйте про себя: "Я свободен. Эта тяга — просто иллюзия".', type: 'mindfulness', icon: <Shield /> },
-          { title: 'Физический сброс', description: 'Сделайте 20 приседаний. Адреналин сгорит в мышцах.', type: 'action', icon: <RunIcon /> },
-          { title: 'Отжимания', description: 'Сделайте 10 отжиманий от пола или от стены.', type: 'action', icon: <RunIcon /> },
-          { title: 'Планка', description: 'Встаньте в планку на 60 секунд. Все мысли переключатся на мышцы.', type: 'action', icon: <RunIcon /> },
-          { title: 'Прыжки', description: 'Выполните прыжки "Jumping Jacks".', type: 'action', icon: <RunIcon /> },
-          { title: 'Растяжка шеи', description: 'Медленно наклоняйте голову к плечам, затем вперед и назад.', type: 'action', icon: <Activity /> },
-          { title: 'Вращение кистями', description: 'Энергично покрутите кистями рук в обе стороны.', type: 'action', icon: <Activity /> },
-          { title: 'Стульчик', description: 'Прислонитесь спиной к стене и "сядьте" на невидимый стул.', type: 'action', icon: <RunIcon /> },
-          { title: 'Бег на месте', description: 'Бегите на месте, высоко поднимая колени.', type: 'action', icon: <RunIcon /> },
-          { title: 'Потягивание', description: 'Встаньте на носочки и максимально потянитесь руками вверх.', type: 'action', icon: <Activity /> },
-          { title: 'Вращение плечами', description: 'Сделайте 10 широких кругов плечами назад и 10 вперед.', type: 'action', icon: <Activity /> },
-          { title: 'Массаж рук', description: 'Интенсивно помассируйте каждый палец и ладонь другой рукой.', type: 'action', icon: <Heart /> },
-          { title: 'Потрясти телом', description: 'Встаньте и сильно потрясите всем телом.', type: 'action', icon: <RunIcon /> },
-          { title: 'Наклоны', description: 'Попробуйте достать кончиками пальцев до пола.', type: 'action', icon: <Activity /> },
-          { title: 'Массаж мочек', description: 'Энергично разотрите мочки ушей до ощущения тепла.', type: 'action', icon: <Heart /> },
-          { title: 'Сжатие кулаков', description: 'Сильно сожмите кулаки на 5 секунд, затем расслабьте. Повторите.', type: 'action', icon: <Activity /> },
-          { title: 'Прогулка', description: 'Если можете, пройдитесь быстрым шагом хотя бы 60 секунд.', type: 'action', icon: <RunIcon /> },
-          { title: 'Баланс на одной ноге', description: 'Встаньте на одну ногу, закройте глаза и держите баланс.', type: 'action', icon: <Activity /> },
-          { title: 'Растяжка груди', description: 'Сцепите руки в замок за спиной и выгните грудь вперед.', type: 'action', icon: <Activity /> },
-          { title: 'Скручивания', description: 'Повороты корпуса влево-вправо с разведенными руками.', type: 'action', icon: <Activity /> },
-          { title: 'Разминка глаз', description: 'Посмотрите вверх, вниз, влево, вправо. Сделайте круг глазами.', type: 'action', icon: <Activity /> },
-          { title: 'Сжать предмет', description: 'Возьмите эспандер или любой предмет и сильно сжимайте его.', type: 'action', icon: <RunIcon /> },
-          { title: 'Растяжка ног', description: 'Потяните квадрицепс, согнув ногу назад.', type: 'action', icon: <Activity /> },
-          { title: 'Мельница', description: 'Наклонитесь и доставайте правой рукой левую ногу.', type: 'action', icon: <RunIcon /> },
-          { title: 'Массаж шеи', description: 'Разомните мышцы задней поверхности шеи пальцами.', type: 'action', icon: <Heart /> },
-          { title: 'Глубокий присед', description: 'Опуститесь в максимально глубокий присед и посидите так.', type: 'action', icon: <RunIcon /> },
-          { title: 'Стакан воды', description: 'Медленно выпейте стакан чистой воды. Это отвлечет рецепторы.', type: 'action', icon: <Droplets /> },
-          { title: 'Контрастное умывание', description: 'Умойтесь максимально холодной водой.', type: 'action', icon: <Droplets /> },
-          { title: 'Хрустящий перекус', description: 'Съешьте морковь, орехи или яблоко. Жевание снимает стресс.', type: 'action', icon: <Heart /> },
-          { title: 'Чистка зубов', description: 'Почистите зубы мятной пастой. Запах перебивает тягу.', type: 'behavioral', icon: <Shield /> },
-          { title: 'Жвачка', description: 'Пожуйте жвачку с самым сильным и ядреным вкусом.', type: 'action', icon: <Heart /> },
-          { title: 'Кубик льда', description: 'Возьмите кубик льда и держите в руке, пока он не растает.', type: 'action', icon: <Droplets /> },
-          { title: 'Горячий чай', description: 'Заварите чай. Пейте горячим мелкими глотками.', type: 'action', icon: <Coffee /> },
-          { title: 'Ароматерапия', description: 'Глубоко вдохните запах кофе из банки или любимого парфюма.', type: 'action', icon: <Wind /> },
-          { title: 'Помыть руки', description: 'Вымойте руки с мылом, тщательно массируя каждый палец.', type: 'action', icon: <Droplets /> },
-          { title: 'Лимон', description: 'Отрежьте дольку лимона и положите на язык.', type: 'action', icon: <Droplets /> },
-          { title: 'Холод на запястья', description: 'Подставьте запястья под струю ледяной воды на минуту.', type: 'action', icon: <Droplets /> },
-          { title: 'Фокус на текстуре', description: 'Найдите самую шершавую поверхность и водите по ней пальцем.', type: 'mindfulness', icon: <Activity /> },
-          { title: 'Слушать тишину', description: 'Наденьте наушники без музыки. Сосредоточьтесь на вакууме.', type: 'mindfulness', icon: <Music /> },
-          { title: 'Мятная конфета', description: 'Рассосите конфету вроде "Холс". Холод в горле снимает тягу.', type: 'action', icon: <Heart /> },
-          { title: 'Полоскание рта', description: 'Прополощите рот ядреным ополаскивателем для зубов.', type: 'action', icon: <Droplets /> },
-          { title: 'Прикосновение к себе', description: 'Обнимите себя за плечи и крепко сожмите.', type: 'action', icon: <Heart /> },
-          { title: 'Запах специй', description: 'Понюхайте черный перец, корицу или гвоздику.', type: 'action', icon: <Wind /> },
-          { title: 'Тепло на живот', description: 'Положите ладони на живот и почувствуйте тепло тела.', type: 'mindfulness', icon: <Heart /> },
-          { title: 'Щепотка соли', description: 'Лизните микро-щепотку соли. Резкий вкус переключит нейроны.', type: 'action', icon: <Droplets /> },
-          { title: 'Укус губы', description: 'Слегка прикусите нижнюю губу для легкого болевого сигнала.', type: 'action', icon: <Activity /> },
-          { title: 'Звонок близкому', description: 'Позвоните кому-то и просто поболтайте 5 минут о ерунде.', type: 'behavioral', icon: <Phone /> },
-          { title: 'Музыкальная пауза', description: 'Включите любимый энергичный трек и закройте глаза.', type: 'action', icon: <Music /> },
-          { title: 'Смена локации', description: 'Срочно уйдите из комнаты. Выйдите на балкон или улицу.', type: 'action', icon: <Activity /> },
-          { title: 'Выгрузка мыслей', description: 'Напишите на бумаге всё, что бесит прямо сейчас.', type: 'behavioral', icon: <Info /> },
-          { title: 'Мелкая моторика', description: 'Крутите в руках ручку, монету или кубик Рубика.', type: 'action', icon: <Activity /> },
-          { title: 'Наведение порядка', description: 'Разберите один ящик стола или выбросьте 5 ненужных вещей.', type: 'behavioral', icon: <Activity /> },
-          { title: 'Удаление фото', description: 'Откройте галерею и удалите 20 неудачных фото.', type: 'behavioral', icon: <Phone /> },
-          { title: 'Старая переписка', description: 'Откройте старый диалог в мессенджере и почитайте его.', type: 'behavioral', icon: <Phone /> },
-          { title: 'Рисование каракулей', description: 'Возьмите ручку и заполните лист любыми узорами.', type: 'behavioral', icon: <Activity /> },
-          { title: 'Уход за цветами', description: 'Полейте комнатные растения, протрите им листья.', type: 'behavioral', icon: <Activity /> },
-          { title: 'Протереть пыль', description: 'Возьмите влажную тряпку и протрите стол.', type: 'behavioral', icon: <Activity /> },
-          { title: 'Сделать оригами', description: 'Возьмите листок и сложите самолетик или кораблик.', type: 'behavioral', icon: <Activity /> },
-          { title: 'Смешное видео', description: 'Посмотрите смешной ролик на YouTube.', type: 'behavioral', icon: <Play /> },
-          { title: 'Написать себе', description: 'Напишите себе в "Избранное", почему вы бросаете.', type: 'behavioral', icon: <Phone /> },
-          { title: 'Поиграть в игру', description: 'Откройте Тетрис, Судоку или "Три в ряд" на телефоне.', type: 'behavioral', icon: <Brain /> },
-          { title: 'Заварить кофе', description: 'Сосредоточьтесь на процессе заваривания.', type: 'behavioral', icon: <Coffee /> },
-          { title: 'Планирование', description: 'Запишите 3 важные задачи на эту неделю.', type: 'behavioral', icon: <Info /> },
-          { title: 'Разминка пальцев', description: 'Напечатайте длинное сообщение кому-то.', type: 'behavioral', icon: <Phone /> },
-          { title: 'Визуализация', description: 'Представьте себя через год: свежим, здоровым, с деньгами.', type: 'mindfulness', icon: <Shield /> },
-          { title: 'Чтение', description: 'Откройте любую книгу и прочитайте ровно одну страницу.', type: 'behavioral', icon: <Info /> }
-        ];
-
-        const MOTIVATIONAL_QUOTES = [
-          "Каждая минута без никотина — это твоя личная победа.",
-          "Твои легкие прямо сейчас активно очищаются.",
-          "Тяга длится всего пару минут. Ты точно сильнее.",
-          "Свобода ощущается намного лучше, чем любой вейп.",
-          "Вспомни, ради чего ты начал. Не сдавайся сейчас.",
-          "Никотин — это иллюзия контроля. Настоящий контроль — это отказ."
-        ];
-
         const ACHIEVEMENTS = [
           { id: 'day1', thresholdSec: 86400, title: '1 День: Чистая кровь', icon: <Zap />, description: 'Угарный газ вышел из твоей крови. Риск сердечного приступа падает.' },
           { id: 'day2', thresholdSec: 172800, title: '2 Дня: Пробуждение чувств', icon: <Activity />, description: 'Рецепторы восстанавливаются. Еда становится вкуснее.' },
           { id: 'day3', thresholdSec: 259200, title: '3 Дня: Полный детокс', icon: <Droplets />, description: 'Организм очищен от никотина. Физиологической ломки больше нет.' },
           { id: 'week1', thresholdSec: 604800, title: '1 Неделя: Первое золото', icon: <Medal />, description: 'Семь дней свободы. Мозг снижает выработку стрессовых гормонов.' },
-          { id: 'week2', thresholdSec: 1209600, title: '2 Недели: Свежее дыхание', icon: <Wind />, description: 'Кровообращение улучшилось. Легче ходить пешком и дышать.' },
-          { id: 'week3', thresholdSec: 1814400, title: '21 День: Смена нейронов', icon: <Brain />, description: 'Привычка сломана. Курение больше не является нормой для мозга.' },
           { id: 'month1', thresholdSec: 2592000, title: '1 Месяц: Регенерация тела', icon: <Shield />, description: 'Иммунная система укрепляется. Утренний кашель уходит.' },
-          { id: 'month3', thresholdSec: 7776000, title: '3 Месяца: Железные легкие', icon: <Heart />, description: 'Объем легких увеличен, реснички дыхательных путей очистились.' },
-          { id: 'month6', thresholdSec: 15552000, title: 'Полгода: Перерождение', icon: <Star />, description: 'Стресс, связанный с тягой, практически исчез навсегда.' },
-          { id: 'year1', thresholdSec: 31536000, title: '1 Год: Чемпион', icon: <Trophy />, description: 'Риск болезни сердца снизился в ДВА РАЗА.' },
-          { id: 'year2', thresholdSec: 63072000, title: '2 Года: Безупречность', icon: <Crown />, description: 'Риск инфаркта упал до уровня полностью некурящего человека.' },
-          { id: 'year5', thresholdSec: 157680000, title: '5 Лет: Полное очищение', icon: <Shield />, description: 'Риск рака легких, горла и рта снизился в два раза.' },
-          { id: 'year10', thresholdSec: 315360000, title: '10 Лет: Абсолютный феномен', icon: <Medal />, description: 'Риск смерти от рака легких снизился до уровня некурящего.' },
-          { id: 'infinity', thresholdSec: 473040000, title: 'Бесконечность (15+ Лет)', icon: <Crown />, description: 'Риск сердечно-сосудистых заболеваний идентичен некурящему с рождения.' }
+          { id: 'year1', thresholdSec: 31536000, title: '1 Год: Чемпион', icon: <Trophy />, description: 'Риск болезни сердца снизился в ДВА РАЗА.' }
         ];
 
         // --- Вспомогательные функции ---
         const calculateTimeLeft = (startDate) => {
-          if (!startDate) return null;
-          const difference = +new Date() - +new Date(startDate);
-          if (difference <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
-          return {
-            days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-            hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-            minutes: Math.floor((difference / 1000 / 60) % 60),
-            seconds: Math.floor((difference / 1000) % 60),
-          };
+            if (!startDate) return null;
+            const diff = +new Date() - +new Date(startDate);
+            if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+            return {
+                days: Math.floor(diff / 86400000),
+                hours: Math.floor((diff / 3600000) % 24),
+                minutes: Math.floor((diff / 60000) % 60),
+                seconds: Math.floor((diff / 1000) % 60),
+            };
         };
 
         const formatNumber = (num) => num.toString().padStart(2, '0');
-
         const formatDurationFriendly = (seconds) => {
           if (seconds < 3600) return `${Math.floor(seconds / 60)} мин.`;
-          if (seconds < 86400) return `${Math.floor(seconds / 3600)} ч. ${Math.floor((seconds % 3600) / 60)} м.`;
-          return `${Math.floor(seconds / 86400)} дн. ${Math.floor((seconds % 86400) / 3600)} ч.`;
+          if (seconds < 86400) return `${Math.floor(seconds / 3600)} ч.`;
+          return `${Math.floor(seconds / 86400)} дн.`;
         };
 
-        // --- Универсальный Компонент Всплывающих Окон ---
+        // --- Компоненты ---
         const CustomDialog = ({ dialog, onClose }) => {
           if (!dialog) return null;
           return (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-              <div className="bg-white dark:bg-[#1C1C1E] rounded-[28px] p-6 max-w-sm w-full shadow-2xl relative border border-black/5 dark:border-white/10 animate-in zoom-in-95 duration-200">
-                <h3 className="text-xl font-bold text-black dark:text-white tracking-tight mb-2">{dialog.title}</h3>
-                <p className="text-black/70 dark:text-white/70 text-sm mb-6 leading-relaxed">{dialog.message}</p>
+              <div className="bg-[#1C1C1E] rounded-[28px] p-6 max-w-sm w-full border border-white/10 animate-in zoom-in-95 duration-200 shadow-2xl">
+                <h3 className="text-xl font-bold mb-2 text-white">{dialog.title}</h3>
+                <p className="text-white/70 text-sm mb-6 leading-relaxed">{dialog.message}</p>
                 <div className="flex space-x-3">
-                  <button onClick={onClose} className="flex-1 bg-black/5 dark:bg-white/10 text-black dark:text-white font-bold py-3 rounded-xl active:scale-95 transition-transform">
-                    {dialog.type === 'alert' ? 'Понятно' : 'Отмена'}
-                  </button>
+                  <button onClick={onClose} className="flex-1 bg-white/10 py-3 rounded-xl font-bold text-white">Отмена</button>
                   {dialog.type === 'confirm' && (
-                    <button 
-                      onClick={dialog.onConfirm} 
-                      className={`flex-1 font-bold py-3 rounded-xl active:scale-95 transition-transform text-white ${dialog.isDanger ? 'bg-red-500 shadow-lg shadow-red-500/30' : 'bg-blue-500 shadow-lg shadow-blue-500/30'}`}
-                    >
+                    <button onClick={dialog.onConfirm} className={`flex-1 py-3 rounded-xl font-bold text-white ${dialog.isDanger ? 'bg-red-500' : 'bg-blue-500'}`}>
                       {dialog.confirmText || 'ОК'}
                     </button>
                   )}
@@ -318,128 +199,22 @@
           );
         };
 
-        // --- Компоненты ---
-        const Onboarding = ({ onComplete, onShowAlert }) => {
-          const [selectedTypes, setSelectedTypes] = useState([]);
-          const [quitDate, setQuitDate] = useState(new Date().toISOString().slice(0, 16));
-          const [enableAlcohol, setEnableAlcohol] = useState(false);
-          const [alcoholQuitDate, setAlcoholQuitDate] = useState(new Date().toISOString().slice(0, 16));
-          const [drugsRevealed, setDrugsRevealed] = useState(false);
-          const [enableDrugs, setEnableDrugs] = useState(false);
-          const [drugsQuitDate, setDrugsQuitDate] = useState(new Date().toISOString().slice(0, 16));
-
-          const toggleType = (id) => setSelectedTypes(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
-
-          const handleSubmit = (e) => {
-            e.preventDefault();
-            if (selectedTypes.length === 0 && !enableAlcohol && !enableDrugs) {
-              onShowAlert('Ошибка', 'Пожалуйста, выберите хотя бы один трекер для запуска.');
-              return;
-            }
-            
-            const defaultStats = {};
-            selectedTypes.forEach(t => {
-              const typeDef = SMOKING_TYPES.find(x => x.id === t);
-              if (typeDef?.hasUnits) { defaultStats[t] = { type: 'units', unitsPerDay: 15, pricePerPack: 200 }; } 
-              else { defaultStats[t] = { type: 'budget', spend: 1500, period: 'week' }; }
-            });
-            if (enableAlcohol) defaultStats['alcohol'] = { type: 'budget', spend: 3000, period: 'month' };
-            if (enableDrugs) defaultStats['drugs'] = { type: 'budget', spend: 5000, period: 'month' };
-
-            onComplete({
-              types: selectedTypes,
-              quitDate: new Date(quitDate).toISOString(),
-              alcoholEnabled: enableAlcohol,
-              alcoholQuitDate: enableAlcohol ? new Date(alcoholQuitDate).toISOString() : null,
-              drugsEnabled: enableDrugs,
-              drugsQuitDate: enableDrugs ? new Date(drugsQuitDate).toISOString() : null,
-              isDarkMode: true,
-              widgetSize: 'large',
-              statsConfig: defaultStats,
-              relapseHistory: { smoking: [], alcohol: [], drugs: [] },
-              timerThemes: { smoking: 's1', alcohol: 'a1', drugs: 'd1' }
-            });
-          };
-
-          return (
-            <div className="min-h-screen bg-black flex items-center justify-center p-4 transition-colors duration-300 w-full relative z-10 text-white">
-              <div className="bg-[#1C1C1E] rounded-[2rem] shadow-2xl p-8 max-w-md w-full border border-white/10">
-                <div className="text-center mb-10">
-                  <div className="w-20 h-20 bg-gradient-to-tr from-blue-500 to-indigo-500 rounded-[1.5rem] mx-auto flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6">
-                    <Shield className="w-10 h-10 text-white" />
-                  </div>
-                  <h1 className="text-3xl font-bold text-white tracking-tight">Дыши</h1>
-                  <p className="text-white/50 mt-2 text-sm">Настройте свой путь к свободе</p>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-3">
-                    {SMOKING_TYPES.map(type => (
-                      <div key={type.id} onClick={() => toggleType(type.id)} className={`flex items-center p-4 rounded-2xl cursor-pointer transition-all duration-300 border ${selectedTypes.includes(type.id) ? 'border-blue-500 bg-blue-500/20 text-blue-400' : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'}`}>
-                        <div className="mr-4">{type.icon}</div>
-                        <span className="font-semibold text-sm">{type.label}</span>
-                        {selectedTypes.includes(type.id) && <CheckCircle2 className="ml-auto w-5 h-5 text-blue-400" />}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="bg-white/5 p-4 rounded-2xl">
-                    <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Последний раз курил(а)</label>
-                    <input type="datetime-local" value={quitDate} onChange={(e) => setQuitDate(e.target.value)} className="w-full bg-transparent text-white font-medium outline-none color-scheme-dark" required />
-                  </div>
-
-                  <div className="bg-white/5 p-4 rounded-2xl">
-                    <label className="flex items-center justify-between cursor-pointer">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-orange-500/20 p-2 rounded-xl text-orange-500"><Coffee size={18} /></div>
-                        <span className="font-semibold text-sm text-white">Отказ от алкоголя</span>
-                      </div>
-                      <div className={`w-12 h-7 rounded-full transition-colors relative ${enableAlcohol ? 'bg-blue-500' : 'bg-white/20'}`}>
-                        <div className={`absolute top-1 bg-white w-5 h-5 rounded-full shadow-sm transition-transform ${enableAlcohol ? 'translate-x-6' : 'translate-x-1'}`}></div>
-                        <input type="checkbox" checked={enableAlcohol} onChange={(e) => setEnableAlcohol(e.target.checked)} className="hidden" />
-                      </div>
-                    </label>
-                    {enableAlcohol && (
-                      <div className="mt-4 pt-4 border-t border-white/10 animate-in fade-in slide-in-from-top-2">
-                        <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Последний раз пил(а)</label>
-                        <input type="datetime-local" value={alcoholQuitDate} onChange={(e) => setAlcoholQuitDate(e.target.value)} className="w-full bg-transparent text-white font-medium outline-none color-scheme-dark" required={enableAlcohol}/>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4">
-                    {!drugsRevealed ? (
-                      <div onClick={() => setDrugsRevealed(true)} className="w-full p-6 rounded-2xl bg-white/5 backdrop-blur-md border border-white/5 cursor-pointer flex flex-col items-center justify-center opacity-60 hover:opacity-100 transition-all duration-300">
-                        <EyeOff size={24} className="text-white/50 mb-2 filter blur-[1px]" />
-                        <span className="text-sm font-bold text-white/50 filter blur-[3.5px] select-none pointer-events-none">Скрытый трекер зависимостей</span>
-                      </div>
-                    ) : (
-                      <div className="bg-white/5 p-4 rounded-2xl animate-in fade-in zoom-in-95 duration-300 border border-purple-500/30">
-                        <label className="flex items-center justify-between cursor-pointer">
-                          <div className="flex items-center space-x-3">
-                            <div className="bg-purple-500/20 p-2 rounded-xl text-purple-500"><Zap size={18} /></div>
-                            <span className="font-semibold text-sm text-white">Отказ от ПАВ</span>
-                          </div>
-                          <div className={`w-12 h-7 rounded-full transition-colors relative ${enableDrugs ? 'bg-purple-500' : 'bg-white/20'}`}>
-                            <div className={`absolute top-1 bg-white w-5 h-5 rounded-full shadow-sm transition-transform ${enableDrugs ? 'translate-x-6' : 'translate-x-1'}`}></div>
-                            <input type="checkbox" checked={enableDrugs} onChange={(e) => setEnableDrugs(e.target.checked)} className="hidden" />
-                          </div>
-                        </label>
-                        {enableDrugs && (
-                          <div className="mt-4 pt-4 border-t border-white/10 animate-in fade-in slide-in-from-top-2">
-                            <label className="block text-xs font-semibold text-white/50 mb-2 uppercase tracking-wider">Последний раз употреблял(а)</label>
-                            <input type="datetime-local" value={drugsQuitDate} onChange={(e) => setDrugsQuitDate(e.target.value)} className="w-full bg-transparent text-white font-medium outline-none color-scheme-dark" required={enableDrugs}/>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <button type="submit" className="w-full bg-white text-black font-bold py-4 rounded-2xl shadow-lg hover:opacity-90 transition-all active:scale-[0.98] mt-4">Продолжить</button>
-                </form>
-              </div>
+        const ThemeSelector = ({ title, themes, selectedId, onSelect }) => (
+          <div className="mb-6 last:mb-0">
+            <h4 className="text-[10px] font-bold text-white/50 mb-3 uppercase tracking-wider px-2">{title}</h4>
+            <div className="flex overflow-x-auto custom-scrollbar space-x-4 py-4 px-4 -mx-2">
+              {themes.map(t => (
+                <button 
+                  key={t.id} 
+                  onClick={() => onSelect(t.id)}
+                  className={`relative flex-shrink-0 w-12 h-12 rounded-full ${t.bgClass} shadow-md transition-all duration-300 active:scale-95 ${selectedId === t.id ? 'ring-4 ring-blue-500 ring-offset-4 bg-black scale-110' : 'opacity-70 hover:opacity-100'}`}
+                >
+                  {selectedId === t.id && <CheckCircle2 size={20} className="absolute inset-0 m-auto text-white" />}
+                </button>
+              ))}
             </div>
-          );
-        };
+          </div>
+        );
 
         const IOSWidget = ({ title, date, icon, theme, size = 'large' }) => {
           const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(date));
@@ -448,613 +223,234 @@
             return () => clearInterval(timer);
           }, [date]);
           if (!timeLeft) return null;
-
-          const safeTheme = theme || TIMER_THEMES.smoking[0];
           const isCompact = size === 'compact';
-
+          const safeTheme = theme || THEME_DEFAULTS;
           return (
-            <div className={`rounded-[28px] ${isCompact ? 'p-4' : 'p-6'} shadow-xl ${safeTheme.bgClass} ${safeTheme.textClass} relative overflow-hidden transition-all duration-500`}>
-              <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-              
-              <div className={`flex justify-between items-start ${isCompact ? 'mb-3' : 'mb-6'} relative z-10`}>
-                <h2 className={`${isCompact ? 'text-base' : 'text-lg'} font-bold tracking-tight`}>{title}</h2>
-                <div className={`p-2 rounded-2xl ${safeTheme.iconBg}`}>{icon}</div>
+            <div className={`rounded-[28px] ${isCompact ? 'p-4' : 'p-6'} shadow-xl ${safeTheme.bgClass} relative overflow-hidden mb-4 transition-all duration-500`}>
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <h2 className={`${isCompact ? 'text-sm' : 'text-lg'} font-bold`}>{title}</h2>
+                <div className="p-2 rounded-xl bg-white/20">{icon}</div>
               </div>
-              
               <div className="flex justify-between items-baseline px-1 relative z-10">
-                <div className="flex flex-col items-center">
-                  <span className={`${isCompact ? 'text-2xl' : 'text-4xl'} font-bold tracking-tight`}>{timeLeft.days}</span>
-                  <span className={`text-[9px] font-semibold uppercase tracking-wider mt-1 ${safeTheme.labelClass}`}>Дней</span>
-                </div>
-                <span className={`${isCompact ? 'text-xl pb-2' : 'text-2xl pb-4'} font-light ${safeTheme.labelClass}`}>:</span>
-                <div className="flex flex-col items-center">
-                  <span className={`${isCompact ? 'text-2xl' : 'text-4xl'} font-bold tracking-tight`}>{formatNumber(timeLeft.hours)}</span>
-                  <span className={`text-[9px] font-semibold uppercase tracking-wider mt-1 ${safeTheme.labelClass}`}>Часов</span>
-                </div>
-                <span className={`${isCompact ? 'text-xl pb-2' : 'text-2xl pb-4'} font-light ${safeTheme.labelClass}`}>:</span>
-                <div className="flex flex-col items-center">
-                  <span className={`${isCompact ? 'text-2xl' : 'text-4xl'} font-bold tracking-tight`}>{formatNumber(timeLeft.minutes)}</span>
-                  <span className={`text-[9px] font-semibold uppercase tracking-wider mt-1 ${safeTheme.labelClass}`}>Минут</span>
-                </div>
-              </div>
-              
-              {!isCompact && (
-                <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center px-2 relative z-10">
-                  <span className={`text-xs font-medium ${safeTheme.labelClass}`}>Текущая секунда</span>
-                  <span className="text-sm font-bold font-mono">{formatNumber(timeLeft.seconds)}</span>
-                </div>
-              )}
-            </div>
-          );
-        };
-
-        const Dashboard = ({ userSettings }) => {
-          const [showSOS, setShowSOS] = useState(false);
-          const [sosPractice, setSosPractice] = useState(null);
-          
-          const handleSOS = () => { setSosPractice(PRACTICES[Math.floor(Math.random() * PRACTICES.length)]); setShowSOS(true); };
-
-          const sTheme = TIMER_THEMES.smoking.find(t => t.id === (userSettings.timerThemes?.smoking || 's1'));
-          const aTheme = TIMER_THEMES.alcohol.find(t => t.id === (userSettings.timerThemes?.alcohol || 'a1'));
-          const dTheme = TIMER_THEMES.drugs.find(t => t.id === (userSettings.timerThemes?.drugs || 'd1'));
-          const widgetSize = userSettings.widgetSize || 'large';
-
-          return (
-            <div className="space-y-6 pb-32 pt-8 px-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <header className="mb-2">
-                <h1 className="text-3xl font-bold text-black dark:text-white tracking-tight">Сводка</h1>
-                <p className="text-black/50 dark:text-white/50 text-sm font-medium mt-1">Твои таймеры</p>
-              </header>
-              
-              {userSettings.types?.length > 0 && <IOSWidget title="Без курения" date={userSettings.quitDate} icon={<Wind size={20} />} theme={sTheme} size={widgetSize} />}
-              {userSettings.alcoholEnabled && <IOSWidget title="Без алкоголя" date={userSettings.alcoholQuitDate} icon={<Coffee size={20} />} theme={aTheme} size={widgetSize} />}
-              {userSettings.drugsEnabled && <IOSWidget title="Без веществ" date={userSettings.drugsQuitDate} icon={<Zap size={20} />} theme={dTheme} size={widgetSize} />}
-
-              <div className="mt-10">
-                <button onClick={handleSOS} className="group relative w-full rounded-[28px] p-1 overflow-hidden transition-all duration-300 active:scale-[0.96]">
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-500 via-pink-500 to-orange-500 animate-pulse opacity-80"></div>
-                  <div className="relative bg-white/20 dark:bg-black/20 backdrop-blur-md border border-white/20 rounded-[26px] p-8 flex flex-col items-center justify-center text-white shadow-[0_8px_32px_rgba(239,68,68,0.4)]">
-                    <div className="bg-white/20 p-4 rounded-full mb-3 group-hover:scale-110 transition-transform duration-300"><AlertCircle size={36} className="text-white" /></div>
-                    <h3 className="font-bold text-xl tracking-tight">SOS</h3>
-                    <p className="text-white/80 text-xs font-medium mt-2">Острая тяга? Жми сюда</p>
+                {['days', 'hours', 'minutes'].map(u => (
+                  <div key={u} className="flex flex-col items-center">
+                    <span className={`${isCompact ? 'text-xl' : 'text-3xl'} font-bold`}>{timeLeft[u === 'days' ? 'days' : u === 'hours' ? 'hours' : 'minutes']}</span>
+                    <span className="text-[9px] opacity-60 uppercase">{u}</span>
                   </div>
-                </button>
-              </div>
-
-              {showSOS && sosPractice && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-xl animate-in fade-in duration-300">
-                  <div className="bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-2xl rounded-[32px] p-8 max-w-sm w-full shadow-2xl relative border border-white/20 animate-in zoom-in-95 duration-300">
-                    <button onClick={() => setShowSOS(false)} className="absolute top-5 right-5 bg-black/5 dark:bg-white/10 p-2 rounded-full text-black/50 dark:text-white/50 hover:bg-black/10 dark:hover:bg-white/20"><X size={20} /></button>
-                    <div className="w-16 h-16 bg-red-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-red-500/30">{sosPractice.icon}</div>
-                    <p className="text-red-500 font-bold text-sm uppercase tracking-wider mb-2">Отвлекись сейчас</p>
-                    <h3 className="text-2xl font-bold text-black dark:text-white tracking-tight mb-3">{sosPractice.title}</h3>
-                    <p className="text-black/70 dark:text-white/70 leading-relaxed font-medium mb-8">{sosPractice.description}</p>
-                    <button onClick={() => setShowSOS(false)} className="w-full bg-black dark:bg-white text-white dark:text-black font-bold py-4 rounded-2xl active:scale-[0.98] transition-transform">Я справлюсь</button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        };
-
-        const Statistics = ({ userSettings, onUpdateSettings }) => {
-          const [activeSubTab, setActiveSubTab] = useState('finance'); 
-          const [localConfigs, setLocalConfigs] = useState(userSettings.statsConfig || {});
-          const [isEditing, setIsEditing] = useState(false);
-
-          const activeHabitsKeys = [
-            ...(userSettings.types || []),
-            ...(userSettings.alcoholEnabled ? ['alcohol'] : []),
-            ...(userSettings.drugsEnabled ? ['drugs'] : [])
-          ];
-
-          const getHabitLabel = (id) => {
-            if (id === 'alcohol') return 'Алкоголь';
-            if (id === 'drugs') return 'ПАВ / Наркотики';
-            return SMOKING_TYPES.find(t => t.id === id)?.label || id;
-          };
-          const isUnitsBased = (id) => SMOKING_TYPES.find(t => t.id === id)?.hasUnits;
-
-          const handleSaveStats = () => { onUpdateSettings({ ...userSettings, statsConfig: localConfigs }); setIsEditing(false); };
-          const updateConfig = (habitId, field, value) => { setLocalConfigs(prev => ({ ...prev, [habitId]: { ...prev[habitId], [field]: value } })); };
-
-          const calcDaysElapsed = (quitDateIso) => quitDateIso ? Math.max(0, (+new Date() - +new Date(quitDateIso)) / 1000 / 86400) : 0;
-          let totalSavedMoney = 0; let totalAvoidedUnits = 0; let totalLifeMinsRegained = 0;
-
-          activeHabitsKeys.forEach(habit => {
-            const conf = userSettings.statsConfig?.[habit];
-            if (!conf) return;
-            let startDate = userSettings.quitDate;
-            if (habit === 'alcohol') startDate = userSettings.alcoholQuitDate;
-            if (habit === 'drugs') startDate = userSettings.drugsQuitDate;
-            const days = calcDaysElapsed(startDate);
-            if (conf.type === 'units') {
-              const avoided = Math.floor(days * (Number(conf.unitsPerDay) || 0));
-              totalAvoidedUnits += avoided;
-              totalSavedMoney += avoided * ((Number(conf.pricePerPack) || 0) / 20);
-              if (['cigarettes', 'iqos'].includes(habit)) totalLifeMinsRegained += avoided * 11;
-            } else {
-              const spend = Number(conf.spend) || 0;
-              let costPerDay = conf.period === 'day' ? spend : conf.period === 'week' ? spend / 7 : spend / 30;
-              totalSavedMoney += days * costPerDay;
-            }
-          });
-
-          const formatHrsMins = (totalMins) => {
-            const hrs = Math.floor(totalMins / 60); const d = Math.floor(hrs / 24);
-            if (d > 0) return `${d} дн. ${hrs % 24} ч.`;
-            if (hrs > 0) return `${hrs} ч. ${totalMins % 60} мин.`;
-            return `${totalMins} мин.`;
-          };
-
-          const historyObj = userSettings.relapseHistory || { smoking: [], alcohol: [], drugs: [] };
-          const allRelapses = [...historyObj.smoking, ...historyObj.alcohol, ...historyObj.drugs].sort((a,b) => new Date(b.date) - new Date(a.date));
-          const totalRelapses = allRelapses.length;
-          const avgStreak = totalRelapses > 0 ? (allRelapses.reduce((sum, r) => sum + r.streakSecs, 0) / totalRelapses) : 0;
-          const maxStreak = totalRelapses > 0 ? Math.max(...allRelapses.map(r => r.streakSecs)) : 0;
-
-          return (
-            <div className="space-y-6 pb-32 pt-8 px-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <header className="mb-6"><h1 className="text-3xl font-bold text-black dark:text-white tracking-tight">Аналитика</h1></header>
-              <div className="flex bg-black/5 dark:bg-white/5 rounded-2xl p-1">
-                <button onClick={() => setActiveSubTab('finance')} className={`flex-1 flex justify-center items-center py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeSubTab === 'finance' ? 'bg-white dark:bg-[#2C2C2E] shadow-sm text-black dark:text-white' : 'text-black/50 dark:text-white/50'}`}>
-                  <Wallet size={16} className="mr-2" /> Экономика
-                </button>
-                <button onClick={() => setActiveSubTab('relapses')} className={`flex-1 flex justify-center items-center py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeSubTab === 'relapses' ? 'bg-white dark:bg-[#2C2C2E] shadow-sm text-black dark:text-white' : 'text-black/50 dark:text-white/50'}`}>
-                  <RotateCcw size={16} className="mr-2" /> Срывы
-                </button>
-              </div>
-
-              {activeSubTab === 'finance' && (
-                <div className="animate-in slide-in-from-left-4 fade-in duration-300">
-                  {!isEditing ? (
-                    <>
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold text-black dark:text-white">Твои ресурсы</h3>
-                        <button onClick={() => setIsEditing(true)} className="text-blue-500 font-bold text-xs bg-blue-500/10 px-3 py-1.5 rounded-lg">Изменить</button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="col-span-2 bg-gradient-to-br from-green-400 to-emerald-600 rounded-[28px] p-6 text-white shadow-lg shadow-green-500/20 relative overflow-hidden">
-                          <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                          <div className="flex items-center space-x-3 mb-4"><div className="bg-white/20 p-2 rounded-xl"><Wallet size={24} /></div><span className="font-bold text-white/90">Сэкономлено</span></div>
-                          <div className="text-4xl font-black tracking-tight">{Math.floor(totalSavedMoney).toLocaleString('ru-RU')} ₽</div>
-                          <p className="text-white/70 text-xs mt-2 font-medium">Суммарно со всех трекеров</p>
-                        </div>
-                        {totalAvoidedUnits > 0 && (
-                          <div className="bg-white dark:bg-[#1C1C1E] rounded-[28px] p-5 border border-black/5 dark:border-white/5 shadow-sm">
-                            <div className="bg-blue-500/10 w-10 h-10 rounded-xl flex items-center justify-center text-blue-500 mb-3"><Wind size={20}/></div>
-                            <div className="text-2xl font-black text-black dark:text-white">{totalAvoidedUnits.toLocaleString('ru-RU')}</div>
-                            <p className="text-black/50 dark:text-white/50 text-xs font-medium leading-tight mt-1">Невыкуренных<br/>штук</p>
-                          </div>
-                        )}
-                        {totalAvoidedUnits > 0 && (
-                          <div className="bg-white dark:bg-[#1C1C1E] rounded-[28px] p-5 border border-black/5 dark:border-white/5 shadow-sm">
-                            <div className="bg-orange-500/10 w-10 h-10 rounded-xl flex items-center justify-center text-orange-500 mb-3"><Clock size={20}/></div>
-                            <div className="text-2xl font-black text-black dark:text-white">{formatHrsMins(totalAvoidedUnits * 5)}</div>
-                            <p className="text-black/50 dark:text-white/50 text-xs font-medium leading-tight mt-1">Свободного<br/>времени</p>
-                          </div>
-                        )}
-                        {totalLifeMinsRegained > 0 && (
-                          <div className="col-span-2 bg-white dark:bg-[#1C1C1E] rounded-[28px] p-6 border border-black/5 dark:border-white/5 shadow-sm flex items-center">
-                            <div className="bg-rose-500/10 p-4 rounded-2xl text-rose-500 mr-4"><LifeBuoy size={28}/></div>
-                            <div>
-                              <p className="text-black/50 dark:text-white/50 text-[10px] font-bold uppercase tracking-wider mb-1">Возвращено жизни (на базе сигарет)</p>
-                              <div className="text-xl font-black text-black dark:text-white">{formatHrsMins(totalLifeMinsRegained)}</div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="bg-white dark:bg-[#1C1C1E] rounded-[28px] p-6 shadow-sm border border-black/5 dark:border-white/5 mb-6">
-                      <h3 className="font-bold text-black dark:text-white mb-6 text-lg">Настройка трат</h3>
-                      <div className="space-y-6">
-                        {activeHabitsKeys.map(habit => {
-                          const conf = localConfigs[habit] || { type: 'budget', spend: 0, period: 'week' };
-                          return (
-                            <div key={habit} className="pb-6 border-b border-black/5 dark:border-white/5 last:border-0 last:pb-0">
-                              <div className="font-bold text-sm text-black dark:text-white mb-3 flex items-center"><div className="w-2 h-2 rounded-full bg-blue-500 mr-2"></div>{getHabitLabel(habit)}</div>
-                              {isUnitsBased(habit) ? (
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-black/50 dark:text-white/50 uppercase mb-1">Штук в день</label>
-                                    <input type="number" value={conf.unitsPerDay || ''} onChange={(e) => updateConfig(habit, 'unitsPerDay', e.target.value)} className="w-full bg-black/5 dark:bg-white/5 text-black dark:text-white p-3 rounded-xl outline-none" placeholder="15" />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-black/50 dark:text-white/50 uppercase mb-1">Цена за 20 шт (₽)</label>
-                                    <input type="number" value={conf.pricePerPack || ''} onChange={(e) => updateConfig(habit, 'pricePerPack', e.target.value)} className="w-full bg-black/5 dark:bg-white/5 text-black dark:text-white p-3 rounded-xl outline-none" placeholder="200" />
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-black/50 dark:text-white/50 uppercase mb-1">Сумма трат (₽)</label>
-                                    <input type="number" value={conf.spend || ''} onChange={(e) => updateConfig(habit, 'spend', e.target.value)} className="w-full bg-black/5 dark:bg-white/5 text-black dark:text-white p-3 rounded-xl outline-none" placeholder="1000" />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[10px] font-bold text-black/50 dark:text-white/50 uppercase mb-1">Период</label>
-                                    <select value={conf.period || 'week'} onChange={(e) => updateConfig(habit, 'period', e.target.value)} className="w-full bg-black/5 dark:bg-white/5 text-black dark:text-white p-3 rounded-xl outline-none appearance-none">
-                                      <option value="day">В день</option><option value="week">В неделю</option><option value="month">В месяц</option>
-                                    </select>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                        <button onClick={handleSaveStats} className="w-full bg-blue-500 text-white font-bold py-4 rounded-xl active:scale-95 transition-transform mt-4">Сохранить настройки</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeSubTab === 'relapses' && (
-                <div className="animate-in slide-in-from-right-4 fade-in duration-300">
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-sm border border-black/5 dark:border-white/5 flex flex-col items-center justify-center">
-                      <span className="text-3xl font-black text-rose-500">{totalRelapses}</span>
-                      <span className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-wider mt-1">Всего срывов</span>
-                    </div>
-                    <div className="bg-white dark:bg-[#1C1C1E] rounded-[24px] p-5 shadow-sm border border-black/5 dark:border-white/5 flex flex-col items-center justify-center text-center">
-                      <span className="text-xl font-black text-blue-500">{avgStreak > 0 ? formatDurationFriendly(avgStreak) : '—'}</span>
-                      <span className="text-[10px] font-bold text-black/50 dark:text-white/50 uppercase tracking-wider mt-1">Средняя чистота</span>
-                    </div>
-                  </div>
-                  <h3 className="font-bold text-black dark:text-white mb-4 flex items-center"><CalendarDays size={18} className="mr-2 text-black/50 dark:text-white/50" />История попыток</h3>
-                  {totalRelapses === 0 ? (
-                    <div className="bg-black/5 dark:bg-white/5 rounded-2xl p-8 text-center border border-dashed border-black/10 dark:border-white/10">
-                      <ListRestart size={32} className="mx-auto text-black/30 dark:text-white/30 mb-3" />
-                      <p className="text-sm font-bold text-black/60 dark:text-white/60">Нет записей о срывах</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {allRelapses.map((rel, idx) => {
-                        const date = new Date(rel.date);
-                        const isMax = rel.streakSecs === maxStreak && maxStreak > 0;
-                        return (
-                          <div key={idx} className="bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 shadow-sm border border-black/5 dark:border-white/5 flex justify-between items-center relative overflow-hidden">
-                            {isMax && <div className="absolute left-0 top-0 bottom-0 w-1 bg-yellow-400"></div>}
-                            <div>
-                              <div className="text-xs font-bold text-black/40 dark:text-white/40 mb-1">{date.toLocaleDateString('ru-RU')} в {date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'})}</div>
-                              <div className="font-bold text-black dark:text-white text-sm">Продержался: <span className={isMax ? 'text-yellow-500' : 'text-blue-500'}>{formatDurationFriendly(rel.streakSecs)}</span></div>
-                            </div>
-                            {isMax && <Trophy size={18} className="text-yellow-400 shrink-0" />}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        };
-
-        const Practices = () => {
-          const [isBreathing, setIsBreathing] = useState(false);
-          const [breathPhase, setBreathPhase] = useState('Вдох'); 
-          const [breathScale, setBreathScale] = useState(1);
-          const [activePracticeModal, setActivePracticeModal] = useState(null);
-          const [modalTimer, setModalTimer] = useState(60);
-          const [isModalTimerRunning, setIsModalTimerRunning] = useState(false);
-
-          useEffect(() => {
-            let interval, timeout1, timeout2;
-            if (isBreathing) {
-              const cycle = () => {
-                setBreathPhase('Вдох (4 сек)'); setBreathScale(1.5);
-                timeout1 = setTimeout(() => {
-                  setBreathPhase('Удерживай (7 сек)'); setBreathScale(1.5);
-                  timeout2 = setTimeout(() => { setBreathPhase('Выдох (8 сек)'); setBreathScale(1); }, 7000); 
-                }, 4000); 
-              };
-              cycle();
-              interval = setInterval(cycle, 19000); 
-            } else {
-              setBreathScale(1); setBreathPhase('Начать');
-            }
-            return () => { clearInterval(interval); clearTimeout(timeout1); clearTimeout(timeout2); };
-          }, [isBreathing]);
-
-          useEffect(() => {
-            let int;
-            if (isModalTimerRunning && modalTimer > 0) int = setInterval(() => setModalTimer(v => v - 1), 1000);
-            else if (modalTimer === 0) setIsModalTimerRunning(false);
-            return () => clearInterval(int);
-          }, [isModalTimerRunning, modalTimer]);
-
-          useEffect(() => {
-            if (activePracticeModal) { setModalTimer(60); setIsModalTimerRunning(false); }
-          }, [activePracticeModal]);
-
-          return (
-            <div className="space-y-6 pb-32 pt-8 px-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <header className="mb-6"><h1 className="text-3xl font-bold text-black dark:text-white tracking-tight">Практики</h1></header>
-
-              <div className="bg-white dark:bg-[#1C1C1E] rounded-[28px] p-8 shadow-sm border border-black/5 dark:border-white/5 flex flex-col items-center py-12 relative overflow-hidden">
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-teal-400/20 blur-[50px] rounded-full pointer-events-none"></div>
-                <h3 className="text-lg font-bold text-black dark:text-white mb-10 z-10">Осознанное дыхание</h3>
-                <div className="relative w-48 h-48 flex items-center justify-center mb-10 z-10">
-                  <div className="absolute w-32 h-32 bg-teal-400/20 rounded-full transition-all ease-in-out" style={{ transform: `scale(${breathScale})`, transitionDuration: breathPhase.includes('Вдох') ? '4s' : breathPhase.includes('Выдох') ? '8s' : '0.5s' }}></div>
-                  <div className="absolute w-24 h-24 bg-teal-400/40 rounded-full transition-all ease-in-out delay-75" style={{ transform: `scale(${breathScale})`, transitionDuration: breathPhase.includes('Вдох') ? '4s' : breathPhase.includes('Выдох') ? '8s' : '0.5s' }}></div>
-                  <div className="absolute w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center text-white shadow-lg shadow-teal-500/40 z-10">
-                    {isBreathing ? <Square fill="currentColor" size={20} /> : <Play fill="currentColor" size={24} className="ml-1" />}
-                  </div>
-                </div>
-                <p className="text-teal-600 dark:text-teal-400 font-bold text-lg mb-6 h-6">{isBreathing ? breathPhase : ' '}</p>
-                <button onClick={() => setIsBreathing(!isBreathing)} className={`px-8 py-3 rounded-full font-bold transition-all active:scale-95 z-10 ${isBreathing ? 'bg-black/5 dark:bg-white/10 text-black dark:text-white' : 'bg-black dark:bg-white text-white dark:text-black shadow-md'}`}>
-                  {isBreathing ? 'Остановить' : 'Начать сессию'}
-                </button>
-              </div>
-
-              <h3 className="text-xl font-bold text-black dark:text-white tracking-tight mt-10 mb-4 px-2">Каталог техник</h3>
-              <div className="space-y-3">
-                {PRACTICES.map((practice, idx) => (
-                  <button key={idx} onClick={() => setActivePracticeModal(practice)} className="w-full text-left bg-white dark:bg-[#1C1C1E] rounded-2xl p-4 shadow-sm border border-black/5 dark:border-white/5 flex items-start space-x-4 hover:bg-black/5 dark:hover:bg-white/10 active:scale-[0.98] transition-all duration-200">
-                    <div className="bg-blue-50 dark:bg-blue-500/10 p-3 rounded-xl text-blue-500 shrink-0">{practice.icon}</div>
-                    <div>
-                      <h4 className="font-bold text-black dark:text-white text-sm mb-1">{practice.title}</h4>
-                      <p className="text-black/60 dark:text-white/60 text-xs leading-relaxed line-clamp-2">{practice.description}</p>
-                    </div>
-                  </button>
                 ))}
               </div>
-
-              {activePracticeModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-xl animate-in fade-in duration-300">
-                  <div className="bg-white/80 dark:bg-[#1C1C1E]/80 backdrop-blur-2xl rounded-[32px] p-8 max-w-sm w-full shadow-2xl relative border border-white/20 animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto hide-scrollbar">
-                    <button onClick={() => setActivePracticeModal(null)} className="absolute top-5 right-5 bg-black/5 dark:bg-white/10 p-2 rounded-full text-black/50 dark:text-white/50 hover:bg-black/10 dark:hover:bg-white/20 z-10"><X size={20} /></button>
-                    <div className="w-16 h-16 bg-blue-500 text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-blue-500/30">{activePracticeModal.icon}</div>
-                    <p className="text-blue-500 dark:text-blue-400 font-bold text-sm uppercase tracking-wider mb-2">Фокус-задание</p>
-                    <h3 className="text-2xl font-bold text-black dark:text-white tracking-tight mb-3">{activePracticeModal.title}</h3>
-                    <p className="text-black/70 dark:text-white/70 leading-relaxed font-medium">{activePracticeModal.description}</p>
-                    <div className="flex flex-col items-center justify-center my-8">
-                      <div className="relative w-28 h-28 flex items-center justify-center mb-5">
-                        <svg className="absolute inset-0 w-full h-full transform -rotate-90">
-                          <circle cx="56" cy="56" r="52" stroke="currentColor" strokeWidth="6" fill="none" className="text-black/5 dark:text-white/5" />
-                          <circle cx="56" cy="56" r="52" stroke="currentColor" strokeWidth="6" fill="none" strokeDasharray="326" strokeDashoffset={326 - (326 * modalTimer) / 60} className={`${modalTimer === 0 ? 'text-green-500' : 'text-blue-500'} transition-all duration-1000 ease-linear`} strokeLinecap="round" />
-                        </svg>
-                        <span className={`text-3xl font-bold ${modalTimer === 0 ? 'text-green-500' : 'text-black dark:text-white'}`}>
-                          {modalTimer === 0 ? <CheckCircle2 size={36} /> : modalTimer}
-                        </span>
-                      </div>
-                      <button onClick={() => modalTimer === 0 ? setModalTimer(60) : setIsModalTimerRunning(!isModalTimerRunning)} className={`w-full font-bold py-4 rounded-2xl active:scale-[0.98] transition-all ${modalTimer === 0 ? 'bg-green-500/10 text-green-600 dark:text-green-400' : isModalTimerRunning ? 'bg-black/5 dark:bg-white/10 text-black dark:text-white' : 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'}`}>
-                        {modalTimer === 0 ? 'Повторить практику' : isModalTimerRunning ? 'Пауза' : 'Начать выполнение (60 сек)'}
-                      </button>
-                    </div>
-                    <button onClick={() => setActivePracticeModal(null)} className="w-full bg-transparent text-black/50 dark:text-white/50 font-bold py-2 hover:text-black dark:hover:text-white transition-colors">Закрыть</button>
-                  </div>
-                </div>
-              )}
             </div>
           );
         };
 
-        const AchievementsBoard = ({ userSettings }) => {
-          const [elapsedSeconds, setElapsedSeconds] = useState(0);
+        const Onboarding = ({ onComplete }) => {
+            const [selectedTypes, setSelectedTypes] = useState([]);
+            const [quitDate, setQuitDate] = useState(new Date().toISOString().slice(0, 16));
+            const [enableAlcohol, setEnableAlcohol] = useState(false);
+            const [enableDrugs, setEnableDrugs] = useState(false);
 
-          useEffect(() => {
-            const calc = () => { if (userSettings?.quitDate) setElapsedSeconds(Math.max(0, (+new Date() - +new Date(userSettings.quitDate)) / 1000)); };
-            calc(); const interval = setInterval(calc, 1000); return () => clearInterval(interval);
-          }, [userSettings.quitDate]);
+            const handleStart = () => {
+                const defaultStats = {};
+                selectedTypes.forEach(t => { defaultStats[t] = { type: 'units', unitsPerDay: 15, pricePerPack: 200 }; });
+                if (enableAlcohol) defaultStats['alcohol'] = { type: 'budget', spend: 3000, period: 'month' };
+                if (enableDrugs) defaultStats['drugs'] = { type: 'budget', spend: 5000, period: 'month' };
 
-          return (
-            <div className="space-y-6 pb-32 pt-8 px-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <header className="mb-6"><h1 className="text-3xl font-bold text-black dark:text-white tracking-tight">Достижения</h1><p className="text-black/50 dark:text-white/50 text-sm font-medium mt-1">То, что ты потеряешь при срыве</p></header>
-              <div className="space-y-4">
-                {ACHIEVEMENTS.map((ach) => {
-                  const isUnlocked = elapsedSeconds >= ach.thresholdSec;
-                  const progress = Math.min(100, (elapsedSeconds / ach.thresholdSec) * 100);
-                  return (
-                    <div key={ach.id} className={`relative overflow-hidden rounded-[28px] p-5 border transition-all duration-300 ${isUnlocked ? 'bg-white dark:bg-[#1C1C1E] border-blue-500/30 shadow-lg shadow-blue-500/10' : 'bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5'}`}>
-                      {isUnlocked && <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>}
-                      <div className="flex items-start space-x-4 relative z-10">
-                        <div className={`p-3 rounded-2xl shrink-0 transition-colors duration-500 ${isUnlocked ? 'bg-gradient-to-br from-blue-500 to-indigo-500 text-white shadow-md' : 'bg-black/10 dark:bg-white/10 text-black/40 dark:text-white/40'}`}>{ach.icon}</div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start mb-1">
-                            <h4 className={`font-bold text-sm leading-tight ${isUnlocked ? 'text-black dark:text-white' : 'text-black/60 dark:text-white/60'}`}>{ach.title}</h4>
-                            {isUnlocked && <CheckCircle2 size={18} className="text-blue-500 ml-2 shrink-0 animate-in zoom-in" />}
-                          </div>
-                          <p className={`text-xs leading-relaxed mb-3 ${isUnlocked ? 'text-black/70 dark:text-white/70' : 'text-black/40 dark:text-white/40'}`}>{ach.description}</p>
-                          {!isUnlocked && (
-                            <div className="mt-2">
-                              <div className="flex justify-between text-[10px] font-bold text-black/40 dark:text-white/40 mb-1 uppercase tracking-wider"><span>Прогресс</span><span>{progress.toFixed(1)}%</span></div>
-                              <div className="w-full bg-black/10 dark:bg-white/10 rounded-full h-1.5 overflow-hidden"><div className="bg-blue-500 h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${progress}%` }}></div></div>
+                onComplete({
+                    types: selectedTypes,
+                    quitDate: new Date(quitDate).toISOString(),
+                    alcoholEnabled: enableAlcohol,
+                    alcoholQuitDate: enableAlcohol ? new Date(quitDate).toISOString() : null,
+                    drugsEnabled: enableDrugs,
+                    drugsQuitDate: enableDrugs ? new Date(quitDate).toISOString() : null,
+                    isDarkMode: true,
+                    timerThemes: { smoking: 's1', alcohol: 'a1', drugs: 'd1' },
+                    relapseHistory: { smoking: [], alcohol: [], drugs: [] },
+                    statsConfig: defaultStats,
+                    widgetSize: 'large'
+                });
+            };
+
+            return (
+                <div className="min-h-screen bg-black flex items-center justify-center p-6">
+                    <div className="bg-[#1C1C1E] p-8 rounded-[2rem] w-full max-w-md border border-white/10">
+                        <h1 className="text-3xl font-bold mb-8 text-center">Дыши Свободно</h1>
+                        <div className="space-y-4">
+                            {SMOKING_TYPES.map(t => (
+                                <button key={t.id} onClick={() => setSelectedTypes(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])} 
+                                    className={`w-full p-4 rounded-2xl border flex items-center transition-all ${selectedTypes.includes(t.id) ? 'border-blue-500 bg-blue-500/10' : 'border-white/10'}`}>
+                                    {t.icon} <span className="ml-4">{t.label}</span>
+                                </button>
+                            ))}
+                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                                <span>Алкоголь</span>
+                                <input type="checkbox" checked={enableAlcohol} onChange={e => setEnableAlcohol(e.target.checked)} className="w-6 h-6 rounded-full" />
                             </div>
-                          )}
+                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                                <span>ПАВ</span>
+                                <input type="checkbox" checked={enableDrugs} onChange={e => setEnableDrugs(e.target.checked)} className="w-6 h-6 rounded-full" />
+                            </div>
+                            <input type="datetime-local" value={quitDate} onChange={e => setQuitDate(e.target.value)} className="w-full bg-white/5 p-4 rounded-2xl border border-white/10 color-scheme-dark" />
+                            <button onClick={handleStart} className="w-full bg-blue-500 py-4 rounded-2xl font-bold text-lg mt-4 shadow-lg shadow-blue-500/20 active:scale-95 transition-transform">Начать новую жизнь</button>
                         </div>
-                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        };
-
-        const ThemeSelector = ({ title, themes, selectedId, onSelect }) => (
-          <div className="mb-6 last:mb-0">
-            <h4 className="text-[10px] font-bold text-black/50 dark:text-white/50 mb-3 uppercase tracking-wider">{title}</h4>
-            <div className="flex overflow-x-auto hide-scrollbar space-x-4 py-2 -mx-2 px-3">
-              {themes.map(t => (
-                <button 
-                  key={t.id} 
-                  onClick={() => onSelect(t.id)}
-                  title={t.name}
-                  className={`relative flex-shrink-0 w-12 h-12 rounded-full ${t.bgClass} shadow-md transition-all duration-300 active:scale-95 ${selectedId === t.id ? 'ring-4 ring-blue-500 ring-offset-2 dark:ring-offset-[#1C1C1E] scale-110' : 'opacity-70 hover:opacity-100'}`}
-                >
-                  {selectedId === t.id && <CheckCircle2 size={20} className="absolute inset-0 m-auto text-white drop-shadow-md" />}
-                </button>
-              ))}
-            </div>
-          </div>
-        );
-
-        const Settings = ({ userSettings, onUpdateSettings, onShowDialog }) => {
-          const updateTheme = (habit, themeId) => onUpdateSettings({ ...userSettings, timerThemes: { ...(userSettings.timerThemes || {}), [habit]: themeId } });
-          const toggleWidgetSize = () => onUpdateSettings({ ...userSettings, widgetSize: userSettings.widgetSize === 'compact' ? 'large' : 'compact' });
-
-          const requestReset = (type) => {
-            if (type === 'all') {
-              onShowDialog({
-                title: 'Удалить все данные?',
-                message: 'ВНИМАНИЕ: Это полностью удалит историю срывов, статистику экономии и все таймеры.',
-                type: 'confirm',
-                isDanger: true,
-                confirmText: 'Удалить',
-                onConfirm: () => onUpdateSettings(null)
-              });
-              return;
-            }
-
-            onShowDialog({
-              title: 'Зафиксировать срыв?',
-              message: 'Мы сбросим этот таймер и сохраним результат в "Аналитику срывов", чтобы ты мог отслеживать паттерны.',
-              type: 'confirm',
-              isDanger: false,
-              confirmText: 'Записать срыв',
-              onConfirm: () => {
-                const now = new Date();
-                const history = userSettings.relapseHistory ? { ...userSettings.relapseHistory } : { smoking: [], alcohol: [], drugs: [] };
-                const newSettings = { ...userSettings };
-                const recordRelapse = (category, oldDateStr) => {
-                  const streakSecs = Math.max(0, (now - new Date(oldDateStr)) / 1000);
-                  if (!history[category]) history[category] = [];
-                  history[category].push({ date: now.toISOString(), streakSecs });
-                };
-                if (type === 'smoking') { recordRelapse('smoking', userSettings.quitDate); newSettings.quitDate = now.toISOString(); }
-                if (type === 'alcohol') { recordRelapse('alcohol', userSettings.alcoholQuitDate); newSettings.alcoholQuitDate = now.toISOString(); }
-                if (type === 'drugs') { recordRelapse('drugs', userSettings.drugsQuitDate); newSettings.drugsQuitDate = now.toISOString(); }
-                
-                newSettings.relapseHistory = history;
-                onUpdateSettings(newSettings, 'statistics');
-              }
-            });
-          };
-
-          return (
-            <div className="space-y-6 pb-32 pt-8 px-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <header className="mb-6"><h1 className="text-3xl font-bold text-black dark:text-white tracking-tight">Настройки</h1></header>
-              
-              <div className="bg-white dark:bg-[#1C1C1E] rounded-[28px] p-6 shadow-sm border border-black/5 dark:border-white/5 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-indigo-500/10 p-3 rounded-xl text-indigo-500">{userSettings.isDarkMode ? <Moon size={20} /> : <Sun size={20} />}</div>
-                    <span className="font-bold text-black dark:text-white text-sm">Темная тема ОС</span>
-                  </div>
-                  <div onClick={() => onUpdateSettings({...userSettings, isDarkMode: !userSettings.isDarkMode})} className={`w-14 h-8 rounded-full transition-colors relative cursor-pointer ${userSettings.isDarkMode ? 'bg-green-500' : 'bg-black/20 dark:bg-white/20'}`}>
-                    <div className={`absolute top-1 bg-white w-6 h-6 rounded-full shadow-md transition-transform duration-300 ${userSettings.isDarkMode ? 'translate-x-7' : 'translate-x-1'}`}></div>
-                  </div>
                 </div>
-
-                <div className="flex items-center justify-between pt-6 border-t border-black/5 dark:border-white/5">
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-blue-500/10 p-3 rounded-xl text-blue-500">{userSettings.widgetSize === 'compact' ? <Minimize2 size={20} /> : <Maximize2 size={20} />}</div>
-                    <div>
-                      <span className="font-bold text-black dark:text-white text-sm block">Размер таймеров</span>
-                      <span className="text-xs text-black/50 dark:text-white/50">{userSettings.widgetSize === 'compact' ? 'Компактные' : 'Большие (с секундами)'}</span>
-                    </div>
-                  </div>
-                  <div onClick={toggleWidgetSize} className={`w-14 h-8 rounded-full transition-colors relative cursor-pointer ${userSettings.widgetSize === 'compact' ? 'bg-blue-500' : 'bg-black/20 dark:bg-white/20'}`}>
-                    <div className={`absolute top-1 bg-white w-6 h-6 rounded-full shadow-md transition-transform duration-300 ${userSettings.widgetSize === 'compact' ? 'translate-x-7' : 'translate-x-1'}`}></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white dark:bg-[#1C1C1E] rounded-[28px] p-6 shadow-sm border border-black/5 dark:border-white/5">
-                <h3 className="font-bold text-black dark:text-white mb-6 text-sm uppercase tracking-wider">Стиль таймеров</h3>
-                {userSettings.types?.length > 0 && <ThemeSelector title="Курение (Темные)" themes={TIMER_THEMES.smoking} selectedId={userSettings.timerThemes?.smoking || 's1'} onSelect={(id) => updateTheme('smoking', id)} />}
-                {userSettings.alcoholEnabled && <ThemeSelector title="Алкоголь (Яркие)" themes={TIMER_THEMES.alcohol} selectedId={userSettings.timerThemes?.alcohol || 'a1'} onSelect={(id) => updateTheme('alcohol', id)} />}
-                {userSettings.drugsEnabled && <ThemeSelector title="Вещества (Триповые)" themes={TIMER_THEMES.drugs} selectedId={userSettings.timerThemes?.drugs || 'd1'} onSelect={(id) => updateTheme('drugs', id)} />}
-              </div>
-
-              <div className="bg-white dark:bg-[#1C1C1E] rounded-[28px] p-6 shadow-sm border border-black/5 dark:border-white/5 space-y-6">
-                <div>
-                  <h3 className="font-bold text-black dark:text-white mb-2 text-sm uppercase tracking-wider">Фиксация срыва</h3>
-                  <button onClick={() => requestReset('smoking')} className="w-full bg-black/5 dark:bg-white/10 text-black dark:text-white font-bold py-4 rounded-2xl hover:bg-black/10 dark:hover:bg-white/20 transition-colors active:scale-95">Срыв: Курение</button>
-                </div>
-                {userSettings.alcoholEnabled && <div className="pt-6 border-t border-black/5 dark:border-white/10"><button onClick={() => requestReset('alcohol')} className="w-full bg-black/5 dark:bg-white/10 text-black dark:text-white font-bold py-4 rounded-2xl hover:bg-black/10 dark:hover:bg-white/20 transition-colors active:scale-95">Срыв: Алкоголь</button></div>}
-                {userSettings.drugsEnabled && <div className="pt-6 border-t border-black/5 dark:border-white/10"><button onClick={() => requestReset('drugs')} className="w-full bg-black/5 dark:bg-white/10 text-black dark:text-white font-bold py-4 rounded-2xl hover:bg-black/10 dark:hover:bg-white/20 transition-colors active:scale-95">Срыв: Вещества</button></div>}
-                <div className="pt-6 border-t border-black/5 dark:border-white/10"><button onClick={() => requestReset('all')} className="w-full bg-red-500/10 text-red-500 font-bold py-4 rounded-2xl hover:bg-red-500/20 transition-colors active:scale-95">Удалить все данные навсегда</button></div>
-              </div>
-            </div>
-          );
+            );
         };
 
         const App = () => {
+          const [user, setUser] = useState(null);
           const [userSettings, setUserSettings] = useState(null);
           const [activeTab, setActiveTab] = useState('dashboard');
-          const [notification, setNotification] = useState(null);
           const [dialog, setDialog] = useState(null);
 
           useEffect(() => {
-            if (!userSettings) return;
-            const interval = setInterval(() => {
-              setNotification(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
-              setTimeout(() => setNotification(null), 5000); 
-            }, 60000); 
-            return () => clearInterval(interval);
-          }, [userSettings]);
+            const initAuth = async () => {
+                try { await auth.signInAnonymously(); } catch (e) { console.error(e); }
+            };
+            initAuth();
+            const unsubscribe = auth.onAuthStateChanged(setUser);
+            return () => unsubscribe();
+          }, []);
 
-          const handleUpdateSettings = (newSettings, redirectTab) => {
-            setUserSettings(newSettings);
-            setDialog(null);
-            if (redirectTab) setActiveTab(redirectTab);
+          useEffect(() => {
+            if (!user) return;
+            const docRef = db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data');
+            const unsubscribe = docRef.onSnapshot(doc => {
+                if (doc.exists) { setUserSettings(doc.data()); } 
+                else { setUserSettings('onboarding'); }
+            }, err => console.error(err));
+            return () => unsubscribe();
+          }, [user]);
+
+          const saveData = async (newSettings) => {
+              if (!user || !newSettings || newSettings === 'onboarding') return;
+              try {
+                  await db.collection('artifacts').doc(appId).collection('users').doc(user.uid).collection('settings').doc('data').set(newSettings, { merge: true });
+              } catch (e) { console.error(e); }
           };
 
-          const showSystemAlert = (title, message) => setDialog({ type: 'alert', title, message });
+          const handleUpdateSettings = (settings) => {
+              setUserSettings(settings);
+              saveData(settings);
+              setDialog(null);
+          };
 
-          if (!userSettings) {
-            return (
-              <div className="dark w-full bg-black min-h-screen font-sans">
-                <CustomDialog dialog={dialog} onClose={() => setDialog(null)} />
-                <Onboarding onComplete={setUserSettings} onShowAlert={showSystemAlert} />
-              </div>
-            );
-          }
+          const requestRelapse = (type) => {
+            setDialog({
+                title: 'Зафиксировать срыв?',
+                message: 'Таймер обнулится. Мы сохраним этот момент в статистику, чтобы ты мог проанализировать ситуацию.',
+                type: 'confirm',
+                confirmText: 'Записать срыв',
+                isDanger: true,
+                onConfirm: () => {
+                    const now = new Date();
+                    const history = userSettings.relapseHistory || { smoking: [], alcohol: [], drugs: [] };
+                    const oldDate = type === 'smoking' ? userSettings.quitDate : type === 'alcohol' ? userSettings.alcoholQuitDate : userSettings.drugsQuitDate;
+                    const streakSecs = Math.max(0, (now - new Date(oldDate)) / 1000);
+                    
+                    const cat = type === 'smoking' ? 'smoking' : type === 'alcohol' ? 'alcohol' : 'drugs';
+                    history[cat].push({ date: now.toISOString(), streakSecs });
+                    
+                    const newSets = { ...userSettings, relapseHistory: history };
+                    if (type === 'smoking') newSets.quitDate = now.toISOString();
+                    if (type === 'alcohol') newSets.alcoholQuitDate = now.toISOString();
+                    if (type === 'drugs') newSets.drugsQuitDate = now.toISOString();
+                    
+                    handleUpdateSettings(newSets);
+                    setActiveTab('statistics');
+                }
+            });
+          };
+
+          if (!userSettings) return <div className="min-h-screen bg-black flex items-center justify-center">Загрузка...</div>;
+          if (userSettings === 'onboarding') return <Onboarding onComplete={handleUpdateSettings} />;
 
           return (
-            <div className={`min-h-screen font-sans transition-colors duration-500 ${userSettings.isDarkMode ? 'dark bg-black' : 'bg-[#F2F2F7]'}`}>
-              <div className="w-full max-w-md mx-auto min-h-screen relative overflow-x-hidden flex flex-col shadow-2xl bg-[#F2F2F7] dark:bg-black">
-                
+            <div className="min-h-screen bg-black text-white font-sans overflow-x-hidden">
+              <div className="w-full max-w-md mx-auto min-h-screen flex flex-col relative shadow-2xl">
                 <CustomDialog dialog={dialog} onClose={() => setDialog(null)} />
                 
-                <div className={`fixed top-8 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${notification ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-10 opacity-0 scale-95 pointer-events-none'}`}>
-                  <div className="bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-xl text-black dark:text-white p-4 rounded-3xl shadow-2xl flex items-center border border-black/5 dark:border-white/10">
-                    <div className="bg-blue-500/20 p-2 rounded-full mr-3 shrink-0"><Bell className="w-5 h-5 text-blue-500" /></div>
-                    <p className="text-sm font-semibold">{notification}</p>
-                  </div>
-                </div>
+                <main className="flex-1 overflow-y-auto p-6 pb-40">
+                  {activeTab === 'dashboard' && (
+                      <div className="animate-in fade-in duration-500">
+                        <h1 className="text-3xl font-bold mb-6">Сводка</h1>
+                        {userSettings.types?.length > 0 && (
+                            <IOSWidget title="Без курения" date={userSettings.quitDate} icon={<Wind />} size={userSettings.widgetSize} theme={TIMER_THEMES.smoking.find(t => t.id === userSettings.timerThemes.smoking)} />
+                        )}
+                        {userSettings.alcoholEnabled && (
+                            <IOSWidget title="Без алкоголя" date={userSettings.alcoholQuitDate} icon={<Coffee />} size={userSettings.widgetSize} theme={TIMER_THEMES.alcohol.find(t => t.id === userSettings.timerThemes.alcohol)} />
+                        )}
+                        {userSettings.drugsEnabled && (
+                            <IOSWidget title="Без веществ" date={userSettings.drugsQuitDate} icon={<Zap />} size={userSettings.widgetSize} theme={TIMER_THEMES.drugs.find(t => t.id === userSettings.timerThemes.drugs)} />
+                        )}
+                        <button onClick={() => setDialog({ title: 'SOS', message: 'Накат длится всего несколько минут. Попробуй глубоко подышать (4-7-8) или выпей стакан воды.', type: 'alert' })} 
+                            className="w-full bg-red-500/20 text-red-500 border border-red-500/30 p-10 rounded-[2.5rem] font-bold text-3xl mt-8 active:scale-95 transition-transform shadow-xl">
+                            SOS
+                        </button>
+                      </div>
+                  )}
 
-                <main className="flex-1 overflow-y-auto hide-scrollbar">
-                  {activeTab === 'dashboard' && <Dashboard userSettings={userSettings} />}
-                  {activeTab === 'statistics' && <Statistics userSettings={userSettings} onUpdateSettings={setUserSettings} />}
-                  {activeTab === 'practices' && <Practices />}
-                  {activeTab === 'achievements' && <AchievementsBoard userSettings={userSettings} />}
-                  {activeTab === 'settings' && <Settings userSettings={userSettings} onUpdateSettings={handleUpdateSettings} onShowDialog={setDialog} />}
+                  {activeTab === 'statistics' && (
+                      <div className="animate-in slide-in-from-bottom-4 duration-500">
+                        <h1 className="text-3xl font-bold mb-6">Статистика</h1>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white/5 p-6 rounded-3xl border border-white/10 text-center">
+                                <span className="text-2xl font-bold text-rose-500">
+                                    {(userSettings.relapseHistory?.smoking?.length || 0) + (userSettings.relapseHistory?.alcohol?.length || 0) + (userSettings.relapseHistory?.drugs?.length || 0)}
+                                </span>
+                                <p className="text-[10px] uppercase opacity-50 font-bold mt-1">Всего срывов</p>
+                            </div>
+                            <div className="bg-white/5 p-6 rounded-3xl border border-white/10 text-center">
+                                <TrendingUp className="mx-auto mb-2 text-blue-500" />
+                                <p className="text-[10px] uppercase opacity-50 font-bold">Идешь к цели</p>
+                            </div>
+                        </div>
+                        <h2 className="text-xl font-bold mt-8 mb-4">История срывов</h2>
+                        <div className="space-y-3">
+                            {[...userSettings.relapseHistory?.smoking, ...userSettings.relapseHistory?.alcohol, ...userSettings.relapseHistory?.drugs]
+                                .sort((a,b) => new Date(b.date) - new Date(a.date)).map((r, i) => (
+                                <div key={i} className="bg-white/5 p-4 rounded-2xl flex justify-between items-center">
+                                    <div>
+                                        <div className="text-[10px] opacity-40 font-bold">{new Date(r.date).toLocaleDateString()}</div>
+                                        <div className="font-bold">Чистота: {formatDurationFriendly(r.streakSecs)}</div>
+                                    </div>
+                                    <RotateCcw size={16} className="text-white/20" />
+                                </div>
+                            ))}
+                        </div>
+                      </div>
+                  )}
+
+                  {activeTab === 'settings' && (
+                      <div className="space-y-6 animate-in fade-in duration-500">
+                        <h1 className="text-3xl font-bold">Настройки</h1>
+                        <div className="bg-white/5 p-6 rounded-[2.5rem] border border-white/10">
+                            <div className="flex justify-between items-center mb-6">
+                                <span className="font-bold">Компактные виджеты</span>
+                                <input type="checkbox" checked={userSettings.widgetSize === 'compact'} onChange={() => handleUpdateSettings({...userSettings, widgetSize: userSettings.widgetSize === 'compact' ? 'large' : 'compact'})} className="w-6 h-6" />
+                            </div>
+                            <ThemeSelector title="Стиль: Курение" themes={TIMER_THEMES.smoking} selectedId={userSettings.timerThemes.smoking} onSelect={id => handleUpdateSettings({...userSettings, timerThemes: {...userSettings.timerThemes, smoking: id}})} />
+                        </div>
+                        <div className="space-y-3">
+                            <button onClick={() => requestRelapse('smoking')} className="w-full bg-white/5 p-5 rounded-2xl border border-white/10 font-bold text-red-400">Срыв: Курение</button>
+                            {userSettings.alcoholEnabled && <button onClick={() => requestRelapse('alcohol')} className="w-full bg-white/5 p-5 rounded-2xl border border-white/10 font-bold text-red-400">Срыв: Алкоголь</button>}
+                        </div>
+                        <button onClick={() => handleUpdateSettings('onboarding')} className="w-full p-4 text-[10px] opacity-20 uppercase tracking-widest font-bold">Полный сброс (удалить всё)</button>
+                      </div>
+                  )}
                 </main>
 
-                <nav className="fixed bottom-0 w-full max-w-md z-40 px-4 pb-safe pt-2">
-                  <div className="bg-white/70 dark:bg-[#1C1C1E]/70 backdrop-blur-2xl border border-black/5 dark:border-white/10 rounded-[2rem] p-2 shadow-2xl mb-6">
-                    <ul className="flex justify-between items-center px-1">
-                      {[
-                        { id: 'dashboard', icon: Activity },
-                        { id: 'statistics', icon: BarChart3 },
-                        { id: 'practices', icon: Heart },
-                        { id: 'achievements', icon: Trophy },
-                        { id: 'settings', icon: SettingsIcon }
-                      ].map(tab => (
-                        <li key={tab.id}>
-                          <button 
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex flex-col items-center p-3 px-4 rounded-2xl transition-all duration-300 ${activeTab === tab.id ? 'bg-black dark:bg-white text-white dark:text-black shadow-md' : 'text-black/50 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/10'}`}
-                          >
-                            <tab.icon size={22} strokeWidth={activeTab === tab.id ? 2.5 : 2} />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-40">
+                  <div className="bg-white/10 backdrop-blur-3xl rounded-[2.5rem] p-2 flex justify-between border border-white/10 shadow-2xl">
+                    {[
+                        {id: 'dashboard', icon: Activity},
+                        {id: 'statistics', icon: BarChart3},
+                        {id: 'settings', icon: SettingsIcon}
+                    ].map(t => (
+                        <button key={t.id} onClick={() => setActiveTab(t.id)} className={`p-4 rounded-3xl flex-1 flex justify-center transition-all ${activeTab === t.id ? 'bg-white text-black shadow-lg scale-110' : 'text-white/40'}`}>
+                            <t.icon />
+                        </button>
+                    ))}
                   </div>
                 </nav>
               </div>
