@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -195,17 +195,17 @@
           { id: 'day2', thresholdSec: 172800, title: '2 Дня: Пробуждение чувств', icon: <Activity />, description: 'Рецепторы восстанавливаются. Еда становится вкуснее.' },
           { id: 'day3', thresholdSec: 259200, title: '3 Дня: Полный детокс', icon: <Droplets />, description: 'Организм очищен от никотина. Физиологической ломки больше нет.' },
           { id: 'week1', thresholdSec: 604800, title: '1 Неделя: Первое золото', icon: <Medal />, description: 'Семь дней свободы. Мозг снижает выработку стрессовых гормонов.' },
-          { id: 'week2', thresholdSec: 1209600, title: '2 Недели: Свежее дыхание', icon: <Wind />, description: 'Кровообращение улучшилось. Легче ходить пешком и дышать.' },
-          { id: 'week3', thresholdSec: 1814400, title: '21 День: Смена нейронов', icon: <Brain />, description: 'Привычка сломана. Курение больше не является нормой для мозга.' },
           { id: 'month1', thresholdSec: 2592000, title: '1 Месяц: Регенерация тела', icon: <Shield />, description: 'Иммунная система укрепляется. Утренний кашель уходит.' },
-          { id: 'month3', thresholdSec: 7776000, title: '3 Месяца: Железные легкие', icon: <Heart />, description: 'Объем легких увеличен, реснички очистились.' },
-          { id: 'month6', thresholdSec: 15552000, title: 'Полгода: Перерождение', icon: <Star />, description: 'Стресс, связанный с тягой, практически исчез навсегда.' },
-          { id: 'year1', thresholdSec: 31536000, title: '1 Год: Чемпион', icon: <Trophy />, description: 'Риск болезни сердца снизился в ДВА РАЗА.' },
-          { id: 'year2', thresholdSec: 63072000, title: '2 Года: Безупречность', icon: <Crown />, description: 'Риск инфаркта упал до уровня полностью некурящего человека.' },
-          { id: 'infinity', thresholdSec: 473040000, title: 'Бесконечность (15+ Лет)', icon: <Crown />, description: 'Риск сердечно-сосудистых заболеваний идентичен некурящему с рождения.' }
+          { id: 'year1', thresholdSec: 31536000, title: '1 Год: Чемпион', icon: <Trophy />, description: 'Риск болезни сердца снизился в ДВА РАЗА.' }
         ];
 
         // --- Вспомогательные функции ---
+        // Функция для получения текущего местного времени в формате YYYY-MM-DDTHH:mm
+        const getLocalDatetime = () => {
+            const tzoffset = (new Date()).getTimezoneOffset() * 60000; 
+            return new Date(Date.now() - tzoffset).toISOString().slice(0, 16);
+        };
+
         const calculateTimeLeft = (startDate) => {
             if (!startDate) return null;
             const diff = +new Date() - +new Date(startDate);
@@ -221,8 +221,8 @@
         const formatNumber = (num) => num.toString().padStart(2, '0');
         const formatDurationFriendly = (seconds) => {
           if (seconds < 3600) return `${Math.floor(seconds / 60)} мин.`;
-          if (seconds < 86400) return `${Math.floor(seconds / 3600)} ч. ${Math.floor((seconds % 3600) / 60)} м.`;
-          return `${Math.floor(seconds / 86400)} дн. ${Math.floor((seconds % 86400) / 3600)} ч.`;
+          if (seconds < 86400) return `${Math.floor(seconds / 3600)} ч.`;
+          return `${Math.floor(seconds / 86400)} дн.`;
         };
 
         // --- Компоненты UI ---
@@ -309,12 +309,14 @@
 
         const Onboarding = ({ onComplete, onShowAlert }) => {
             const [selectedTypes, setSelectedTypes] = useState([]);
-            const [quitDate, setQuitDate] = useState(new Date().toISOString().slice(0, 16));
+            
+            // Используем локальное время для инпутов
+            const [quitDate, setQuitDate] = useState(getLocalDatetime());
             const [enableAlcohol, setEnableAlcohol] = useState(false);
-            const [alcoholQuitDate, setAlcoholQuitDate] = useState(new Date().toISOString().slice(0, 16));
+            const [alcoholQuitDate, setAlcoholQuitDate] = useState(getLocalDatetime());
             const [drugsRevealed, setDrugsRevealed] = useState(false);
             const [enableDrugs, setEnableDrugs] = useState(false);
-            const [drugsQuitDate, setDrugsQuitDate] = useState(new Date().toISOString().slice(0, 16));
+            const [drugsQuitDate, setDrugsQuitDate] = useState(getLocalDatetime());
 
             const toggleType = (id) => setSelectedTypes(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
 
